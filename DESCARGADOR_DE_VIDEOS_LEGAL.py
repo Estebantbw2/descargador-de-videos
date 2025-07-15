@@ -41,6 +41,14 @@ def descargarvainas(url, tipo="mp4", ubicacion=".",appi=None):
             'preferredcodec': 'mp3',
             'preferredquality': '192',                  # Calidad del MP3 en kbps
         }]
+    elif tipo == "wav":
+        ydl_opts['format'] = 'bestaudio/best'       # Descarga solo la mejor calidad de audio
+        ydl_opts['extractaudio'] = True            # Indica a yt-dlp que extraiga el audio
+        ydl_opts['audioformat'] = 'wav'            # Formato de audio final
+        ydl_opts['postprocessors'] = [{            # Procesadores para convertir a WAV
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'wav',
+        }]
     else:
         print("⚠️ Tipo de medio no válido. Descargando como MP4 por defecto.")
         ydl_opts['format'] = 'bestvideo+bestaudio/best'
@@ -106,7 +114,7 @@ class Aplicacion(ctk.CTk):
         self.entrada2.place(relx=0.4,rely=0.35,relwidth=0.6,relheight=0.15, anchor="n")
 
 
-        self.opciones=ctk.CTkComboBox(self, height=50,values=["mp4","mp3"])
+        self.opciones=ctk.CTkComboBox(self, height=50,values=["mp4","mp3","wav"])
         self.opciones.place(relx=0.8,rely=0.2,relwidth=0.2,relheight=0.15, anchor="n")
 
         self.boton=ctk.CTkButton(self,corner_radius=50, text="VRAMOS!!!",command=self.tocoBoton)
