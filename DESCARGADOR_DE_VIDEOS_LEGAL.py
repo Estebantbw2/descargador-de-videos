@@ -7,12 +7,20 @@ from PIL import Image
 import io # Necesario para manejar datos binarios como un archivo
 import requests # N
 
+import sys # para empaquetar ffmpeg
+
 #https://www.gyan.dev/ffmpeg/builds/        FFMPEG          ffmpeg-release-essentials.zip
+
+FFMPEG_PATH = "ffmpeg"
+
 
 directorio_base = os.path.expanduser("~")
 descargas = os.path.join(directorio_base,"Downloads","tu pedido")
 
 def descargarvainas(url, tipo="mp4", ubicacion=".",appi=None):
+
+
+    global FFMPEG_PATH # Acceder a la variable global
 
     #crear carpeta
     os.makedirs(ubicacion , exist_ok=True)
@@ -22,8 +30,10 @@ def descargarvainas(url, tipo="mp4", ubicacion=".",appi=None):
     ydl_opts = {
         'outtmpl': os.path.join(ubicacion, '%(title)s.%(ext)s'), # Plantilla para el nombre del archivo
         'noplaylist': True,                                        # Descarga solo el video individual, no listas
-        'external_downloader': 'ffmpeg',                           # Usa FFmpeg para post-procesamiento/fusión
-        'external_downloader_args': ['-loglevel', 'error'],        # Suprime mensajes detallados de FFmpeg
+     #    'external_downloader': 'ffmpeg',                           # Usa FFmpeg para post-procesamiento/fusión
+     #   'external_downloader_args': ['-loglevel', 'error'],        # Suprime mensajes detallados de FFmpeg
+        'ffmpeg_location': FFMPEG_PATH,
+
     }
     if tipo == "mp4":
     # CAMBIO / ADICIÓN AQUÍ:
@@ -31,6 +41,11 @@ def descargarvainas(url, tipo="mp4", ubicacion=".",appi=None):
         # Si no lo encuentra, retrocede a la mejor calidad general.
         ydl_opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best'
         ydl_opts['merge_output_format'] = 'mp4'
+
+        ydl_opts['postprocessors'] = [{
+            'key': 'FFmpegVideoConvertor',
+            'preferedformat': 'mp4',
+        }]
 
     elif tipo == "mp3":
         ydl_opts['format'] = 'bestaudio/best'           # Descarga solo la mejor calidad de audio
@@ -40,6 +55,7 @@ def descargarvainas(url, tipo="mp4", ubicacion=".",appi=None):
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192',                  # Calidad del MP3 en kbps
+
         }]
     elif tipo == "wav":
         ydl_opts['format'] = 'bestaudio/best'       # Descarga solo la mejor calidad de audio
@@ -48,11 +64,18 @@ def descargarvainas(url, tipo="mp4", ubicacion=".",appi=None):
         ydl_opts['postprocessors'] = [{            # Procesadores para convertir a WAV
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'wav',
+
         }]
     else:
         print("⚠️ Tipo de medio no válido. Descargando como MP4 por defecto.")
         ydl_opts['format'] = 'bestvideo+bestaudio/best'
         ydl_opts['merge_output_format'] = 'mp4'
+
+        ydl_opts['postprocessors'] = [{
+            'key': 'FFmpegVideoConvertor',
+            'preferedformat': 'mp4',
+            
+        }]
 
 
     #descargar 
@@ -94,7 +117,20 @@ def descargarvainas(url, tipo="mp4", ubicacion=".",appi=None):
         print("Consejo: Asegúrate de que FFmpeg esté instalado y su directorio 'bin' esté en tu PATH.")
         app.estatus.configure(text="❌ERROR, PONGA EL LINK PUES! Escriba bien❌",text_color="Red")
 
-
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    # Estamos en un ejecutable de PyInstaller
+    base_path = sys._MEIPASS
+    # Construye la ruta al ejecutable de FFmpeg dentro de la carpeta temporal
+    # Asume que ffmpeg.exe (o ffmpeg para Linux/macOS) está en la raíz de ffmpeg_bin
+    FFMPEG_PATH = os.path.join(base_path, 'ffmpeg_bin', 'ffmpeg.exe') # Ajusta para Linux/macOS si es necesario
+    # O para ser más general, podrías solo apuntar a la carpeta si sabes que ffmpeg.exe está dentro:
+    # FFMPEG_PATH = os.path.join(base_path, 'ffmpeg_bin')
+else:
+    # No estamos en un ejecutable, ejecutando desde el script .py
+    # Asume que ffmpeg.exe está en el PATH o en la carpeta ffmpeg_bin
+    FFMPEG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ffmpeg_bin', 'ffmpeg.exe')
+    # Si quieres que aún use el PATH si no está en ffmpeg_bin:
+    # FFMPEG_PATH = "ffmpeg" # Deja que yt-dlp lo busque en PATH
 
 class Aplicacion(ctk.CTk):
     def __init__(self):
