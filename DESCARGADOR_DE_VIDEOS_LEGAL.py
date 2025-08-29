@@ -6,12 +6,13 @@ from PIL import Image
 
 import io # Necesario para manejar datos binarios como un archivo
 import requests # N
+import subprocess
 
 import sys # para empaquetar ffmpeg
 
 #https://www.gyan.dev/ffmpeg/builds/        FFMPEG          ffmpeg-release-essentials.zip
 
-FFMPEG_PATH = "ffmpeg"
+FFMPEG_PATH = "ffmpeg_bin"
 
 
 directorio_base = os.path.expanduser("~")
@@ -66,6 +67,34 @@ def descargarvainas(url, tipo="mp4", ubicacion=".",appi=None):
             'preferredcodec': 'wav',
 
         }]
+    elif tipo == "spotify_playlist":
+        appi.estatus.configure(text=f"🎵 Descargando playlist de Spotify...",text_color="Gray")
+        try:
+            imagen_spotify = ctk.CTkImage(light_image=Image.open("spotify.png"), size=(100,100))
+            appi.imagen = imagen_spotify
+            appi.imagen_label.configure(image=imagen_spotify)
+        except Exception as e:
+            appi.imagen_label.configure(image=None)
+            appi.imagen = None
+        try:
+            comando = [
+                "spotdl",
+                "download",
+                url,
+                "--output", os.path.join(ubicacion, "{artist} - {title}.{ext}"),
+                "--lyrics", "genius"  # Usa Genius para letras, evita azlyrics
+            ]
+            resultado = subprocess.run(comando, capture_output=True, text=True, encoding="utf-8")
+            print("spotdl stdout:", resultado.stdout)
+            print("spotdl stderr:", resultado.stderr)
+            if resultado.returncode == 0:
+                appi.estatus.configure(text=f"✅ Playlist descargada con spotdl ✅\n{resultado.stdout}",text_color="Green")
+            else:
+                appi.estatus.configure(text=f"❌ Error con spotdl ❌\n{resultado.stderr}",text_color="Red")
+        except Exception as e:
+            print(f"❌ Ocurrió un error con spotdl: {e}")
+            appi.estatus.configure(text=f"❌ERROR con spotdl❌\n{e}",text_color="Red")
+        return
     else:
         print("⚠️ Tipo de medio no válido. Descargando como MP4 por defecto.")
         ydl_opts['format'] = 'bestvideo+bestaudio/best'
@@ -150,7 +179,7 @@ class Aplicacion(ctk.CTk):
         self.entrada2.place(relx=0.4,rely=0.35,relwidth=0.6,relheight=0.15, anchor="n")
 
 
-        self.opciones=ctk.CTkComboBox(self, height=50,values=["mp4","mp3","wav"])
+        self.opciones=ctk.CTkComboBox(self, height=50,values=["mp4","mp3","wav","spotify_playlist"])
         self.opciones.place(relx=0.8,rely=0.2,relwidth=0.2,relheight=0.15, anchor="n")
 
         self.boton=ctk.CTkButton(self,corner_radius=50, text="VRAMOS!!!",command=self.tocoBoton)
@@ -166,10 +195,15 @@ class Aplicacion(ctk.CTk):
         self.estatus =ctk.CTkLabel(master=self,font=("Impact",20), text="")
         self.estatus.place(relx=0.5,rely=0.9,anchor="n")
 
+        self.imagen = None  # Inicializa la imagen
+
 
     def tocoBoton(self):
         url = self.entrada.get()
-
+        opcion = self.opciones.get()
+        if opcion == "spotify_playlist" and "spotify.com/playlist" not in url:
+            self.estatus.configure(text="❌ Debe ingresar un enlace de playlist de Spotify ❌",text_color="Red")
+            return
         la_ubicacion=self.entrada2.get()
 
         if la_ubicacion != "".lower():
@@ -178,14 +212,13 @@ class Aplicacion(ctk.CTk):
             ubicacion = descargas
             print(ubicacion)
         
-        opcion = self.opciones.get()
 
         self.boton.configure(state="disabled")
         self.entrada.configure(state="disabled")
         self.entrada2.configure(state="disabled")
         self.opciones.configure(state="disabled")          
         self.estatus.configure(text="...Descargando..." ,text_color="Gray")
-        self.imagen_label.configure(image="")
+        self.imagen_label.configure(image=None)
 
         print(url,opcion,la_ubicacion)
         #importante!!!
@@ -202,11 +235,11 @@ class Aplicacion(ctk.CTk):
         response.raise_for_status()
         return response.content
 
-    def tamanoImagen(self,event):
-        label_width =self.imagen_label.winfo_width()
-        label_height=self.imagen_label.winfo_height()
-        
-        self.imagen.configure(size=(label_width,label_height))
+    def tamanoImagen(self, event):
+        label_width = self.imagen_label.winfo_width()
+        label_height = self.imagen_label.winfo_height()
+        if self.imagen is not None:
+            self.imagen.configure(size=(label_width, label_height))
         print(event)
 
     
@@ -234,36 +267,3 @@ if __name__== "__main__":
     
     app = Aplicacion()
     app.mainloop()
-    
-
-#def    prototipo():
-    #       print("Descargador de videos 100 porciento seguro   ")
-
-      #      url = input("pega la url   ")
-        #       la_ubicacion = input("Donde lo guardaras? dame un nombre. Di NO para que valla a tu carpeta de descargas :) ")
-     #      if la_ubicacion != "no".lower():
-     #         ubicacion= la_ubicacion
-     #        print("VAMOS!! ")
-     #   else:
-      #      ubicacion = descargas
-       #     print("VALLA Y BUSQUE!!")
-        #    print(ubicacion)
-
-        #hile True:
-          #      opcion =input("quieres video o audio   ").lower()
-        #        if opcion == "video":
-         #           tipo = "mp4"
-          #          break
-           #     elif opcion =="audio":
-            #        tipo = "mp3"
-             #       break
-              #  else:
-               #     print("usted es que es bobo")
-        
-
-    
-        
-            
-            
-        
-
